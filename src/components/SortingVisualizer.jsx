@@ -5,6 +5,107 @@ import { getExplanation } from '../utils/index.js';
 import { FlowChart } from './FlowChart.jsx';
 import { ArrayTrace } from './ArrayTrace.jsx';
 
+// Syntax highlighting component for IDE-like code display
+function CodeHighlight({ line, isActive, darkMode, col, T }) {
+  // Python syntax highlighting patterns
+  const keywords = ['def', 'if', 'else', 'elif', 'while', 'for', 'in', 'return', 'and', 'or', 'not', 'True', 'False', 'None'];
+  const builtins = ['len', 'range', 'int', 'str'];
+
+  const highlight = () => {
+    let result = [];
+    let remaining = line;
+    let key = 0;
+
+    // Colors for dark/light mode
+    const colors = {
+      keyword: darkMode ? '#ff79c6' : '#d73a49',
+      builtin: darkMode ? '#8be9fd' : '#005cc5',
+      string: darkMode ? '#f1fa8c' : '#032f62',
+      number: darkMode ? '#bd93f9' : '#005cc5',
+      comment: darkMode ? '#6272a4' : '#6a737d',
+      function: darkMode ? '#50fa7b' : '#6f42c1',
+      operator: darkMode ? '#ff79c6' : '#d73a49',
+      default: darkMode ? '#f8f8f2' : '#24292e',
+    };
+
+    while (remaining.length > 0) {
+      let matched = false;
+
+      // Comments
+      const commentMatch = remaining.match(/^#.*/);
+      if (commentMatch) {
+        result.push(<span key={key++} style={{color: colors.comment}}>{commentMatch[0]}</span>);
+        remaining = remaining.slice(commentMatch[0].length);
+        matched = true;
+        continue;
+      }
+
+      // Strings (double quotes)
+      const strDMatch = remaining.match(/^"[^"]*"/);
+      if (strDMatch) {
+        result.push(<span key={key++} style={{color: colors.string}}>{strDMatch[0]}</span>);
+        remaining = remaining.slice(strDMatch[0].length);
+        matched = true;
+        continue;
+      }
+
+      // Strings (single quotes)
+      const strSMatch = remaining.match(/^'[^']*'/);
+      if (strSMatch) {
+        result.push(<span key={key++} style={{color: colors.string}}>{strSMatch[0]}</span>);
+        remaining = remaining.slice(strSMatch[0].length);
+        matched = true;
+        continue;
+      }
+
+      // Numbers
+      const numMatch = remaining.match(/^\d+/);
+      if (numMatch) {
+        result.push(<span key={key++} style={{color: colors.number}}>{numMatch[0]}</span>);
+        remaining = remaining.slice(numMatch[0].length);
+        matched = true;
+        continue;
+      }
+
+      // Keywords and builtins
+      const wordMatch = remaining.match(/^[a-zA-Z_][a-zA-Z0-9_]*/);
+      if (wordMatch) {
+        const word = wordMatch[0];
+        if (keywords.includes(word)) {
+          result.push(<span key={key++} style={{color: colors.keyword, fontWeight: '600'}}>{word}</span>);
+        } else if (builtins.includes(word)) {
+          result.push(<span key={key++} style={{color: colors.builtin}}>{word}</span>);
+        } else if (line.includes(word + '(') && !keywords.includes(word)) {
+          // Function definition or call
+          result.push(<span key={key++} style={{color: colors.function}}>{word}</span>);
+        } else {
+          result.push(<span key={key++} style={{color: colors.default}}>{word}</span>);
+        }
+        remaining = remaining.slice(word.length);
+        matched = true;
+        continue;
+      }
+
+      // Operators and punctuation
+      const opMatch = remaining.match(/^[+\-*/%=<>!&|^~:,\[\]()]+/);
+      if (opMatch) {
+        result.push(<span key={key++} style={{color: colors.operator}}>{opMatch[0]}</span>);
+        remaining = remaining.slice(opMatch[0].length);
+        matched = true;
+        continue;
+      }
+
+      // Default - single character
+      result.push(<span key={key++} style={{color: colors.default}}>{remaining[0]}</span>);
+      remaining = remaining.slice(1);
+    }
+
+    return result;
+  };
+
+  return <>{highlight()}</>;
+}
+
 export function SortingVisualizer() {
   const [darkMode, setDarkMode] = useState(true);
   const codeRefs = useRef({});
@@ -116,7 +217,7 @@ export function SortingVisualizer() {
       </div>
 
       {/* ── 2-column layout ── */}
-      <div style={{display:"flex",gap:"14px",maxWidth:"1400px",margin:"0 auto",alignItems:"flex-start"}}>
+      <div style={{display:"flex",gap:"16px",maxWidth:"1800px",margin:"0 auto",alignItems:"flex-start"}}>
 
         {/* LEFT: Array State + Code */}
         <div style={{flex:"1 1 0",minWidth:0,display:"flex",flexDirection:"column",gap:"12px"}}>
@@ -169,7 +270,7 @@ export function SortingVisualizer() {
 
             {/* code lines */}
             <div style={{padding:"10px 0"}}>
-              {algoData.code.map(({line,indent,key,type})=>{
+              {algoData.code.map(({line,indent,key,type}, idx)=>{
                 const active = cur.line===key;
                 return (
                   <div key={key||line} ref={el=>{if(key) codeRefs.current[key]=el;}} style={{
@@ -186,11 +287,15 @@ export function SortingVisualizer() {
                       : <div style={{width:"6px",height:"6px",flexShrink:0}}/>
                     }
                     <span style={{
-                      fontSize:"13px", letterSpacing:"0.2px",
+                      fontSize:"14px", letterSpacing:"0.3px",
                       color: type==="def" ? T.textDef : active ? (darkMode?"#ffffff":T.textActive) : T.textCode,
                       fontFamily:"'Courier New',monospace", lineHeight:"1.8",
                       transition:"color 0.2s", whiteSpace:"pre",
-                    }}>{line}</span>
+                    }}><span style={{
+                      display:"inline-block", width:"24px", textAlign:"right",
+                      marginRight:"12px", color: active ? col : T.textDim,
+                      fontSize:"12px", opacity:0.7,
+                    }}>{idx+1}</span><CodeHighlight line={line} isActive={active} darkMode={darkMode} col={col} T={T}/></span>
                   </div>
                 );
               })}
@@ -209,7 +314,7 @@ export function SortingVisualizer() {
         </div>
 
         {/* RIGHT: Flowchart + panels + controls */}
-        <div style={{width:"290px",flexShrink:0,display:"flex",flexDirection:"column",gap:"12px"}}>
+        <div style={{width:"420px",flexShrink:0,display:"flex",flexDirection:"column",gap:"12px"}}>
 
           {/* Flowchart */}
           <div style={{...panel(),overflow:"hidden"}}>
@@ -220,7 +325,7 @@ export function SortingVisualizer() {
                 boxShadow: darkMode?`0 0 6px ${col}`:"none"}}/>
               <span style={{fontSize:"8px",letterSpacing:"3px",color:T.textDim}}>LIVE FLOWCHART</span>
             </div>
-            <div style={{padding:"10px"}}>
+            <div style={{padding:"14px"}}>
               <FlowChart algoKey={algo} activeKey={cur.line} color={col} T={T}/>
             </div>
           </div>

@@ -21,6 +21,30 @@ export function getPointers(cur, algo) {
     if (swapping.length >= 2) { ptrs[swapping[0]] = "i"; ptrs[swapping[1]] = "min"; }
     else if (comparing.length >= 2)                    ptrs[comparing[0]] = "j";
     else if (comparing.length === 1 && line === "minset") ptrs[comparing[0]] = "i";
+  } else if (algo === "quick") {
+    // Quick Sort pointers
+    if (cur.pivot != null) ptrs[cur.pivot] = "pivot";
+    if (cur.i != null && line === "iset") ptrs[cur.i + 1] = "i";
+    if (cur.j != null) ptrs[cur.j] = "j";
+    if (cur.low != null && cur.high != null) {
+      ptrs[cur.low] = "low";
+      ptrs[cur.high] = "high";
+    }
+    if (swapping.length >= 2) {
+      ptrs[swapping[0]] = "i+1";
+      ptrs[swapping[1]] = "pivot";
+    }
+  } else if (algo === "merge") {
+    // Merge Sort pointers
+    if (cur.left != null && cur.right != null) {
+      ptrs[cur.left] = "left";
+      ptrs[cur.right] = "right";
+    }
+    if (cur.mid != null) ptrs[cur.mid] = "mid";
+    if (cur.k != null) ptrs[cur.k] = "k";
+    if (cur.i != null && line === "while") ptrs[cur.left + cur.i] = "L[i]";
+    if (cur.j != null && line === "while") ptrs[cur.mid + 1 + cur.j] = "R[j]";
+    if (swapping.length) ptrs[swapping[0]] = "writing";
   }
   return ptrs;
 }
